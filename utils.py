@@ -116,22 +116,6 @@ def input_to_squad_example(passage, question):
 def _check_is_max_context(doc_spans, cur_span_index, position):
     """Check if this is the 'max context' doc span for the token."""
 
-    # Because of the sliding window approach taken to scoring documents, a single
-    # token can appear in multiple documents. E.g.
-    #  Doc: the man went to the store and bought a gallon of milk
-    #  Span A: the man went to the
-    #  Span B: to the store and bought
-    #  Span C: and bought a gallon of
-    #  ...
-    #
-    # Now the word 'bought' will have two scores from spans B and C. We only
-    # want to consider the score with "maximum context", which we define as
-    # the *minimum* of its left and right context (the *sum* of left and
-    # right context will always be the same, of course).
-    #
-    # In the example the maximum context for 'bought' would be span C since
-    # it has 1 left context and 3 right context, while span B has 4 left context
-    # and 0 right context.
     best_score = None
     best_span_index = None
     for (span_index, doc_span) in enumerate(doc_spans):
@@ -181,13 +165,11 @@ def squad_examples_to_features(example, tokenizer, max_seq_length,
             tok_to_orig_index.append(i)
             all_doc_tokens.append(sub_token)
 
-    # The -3 accounts for [CLS], [SEP] and [SEP]
+    
     max_tokens_for_doc = max_seq_length - len(query_tokens) - 3
 
-    # We can have documents that are longer than the maximum sequence length.
-    # To deal with this we do a sliding window approach, where we take chunks
-    # of the up to our max length with a stride of `doc_stride`.
-    _DocSpan = collections.namedtuple(  # pylint: disable=invalid-name
+    
+    _DocSpan = collections.namedtuple(  
         "DocSpan", ["start", "length"])
     doc_spans = []
     start_offset = 0
@@ -297,31 +279,7 @@ RawResult = collections.namedtuple("RawResult",["unique_id", "start_logits", "en
 def get_final_text(pred_text, orig_text, do_lower_case, verbose_logging=False):
     """Project the tokenized prediction back to the original text."""
 
-    # When we created the data, we kept track of the alignment between original
-    # (whitespace tokenized) tokens and our WordPiece tokenized tokens. So
-    # now `orig_text` contains the span of our original text corresponding to the
-    # span that we predicted.
-    #
-    # However, `orig_text` may contain extra characters that we don't want in
-    # our prediction.
-    #
-    # For example, let's say:
-    #   pred_text = steve smith
-    #   orig_text = Steve Smith's
-    #
-    # We don't want to return `orig_text` because it contains the extra "'s".
-    #
-    # We don't want to return `pred_text` because it's already been normalized
-    # (the SQuAD eval script also does punctuation stripping/lower casing but
-    # our tokenizer does additional normalization like stripping accent
-    # characters).
-    #
-    # What we really want to return is "Steve Smith".
-    #
-    # Therefore, we have to apply a semi-complicated alignment heuristic between
-    # `pred_text` and `orig_text` to get a character-to-character alignment. This
-    # can fail in certain cases in which case we just return `orig_text`.
-
+    
     def _strip_spaces(text):
         ns_chars = []
         ns_to_s_map = collections.OrderedDict()
@@ -333,10 +291,6 @@ def get_final_text(pred_text, orig_text, do_lower_case, verbose_logging=False):
         ns_text = "".join(ns_chars)
         return (ns_text, ns_to_s_map)
 
-    # We first tokenize `orig_text`, strip whitespace from the result
-    # and `pred_text`, and check if they are the same length. If they are
-    # NOT the same length, the heuristic has failed. If they are the same
-    # length, we assume the characters are one-to-one aligned.
     tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
 
     tok_text = " ".join(tokenizer.tokenize(orig_text))
@@ -352,8 +306,6 @@ def get_final_text(pred_text, orig_text, do_lower_case, verbose_logging=False):
     if len(orig_ns_text) != len(tok_ns_text):
         return orig_text
 
-    # We then project the characters in `pred_text` back to `orig_text` using
-    # the character-to-character alignment.
     tok_s_to_ns_map = {}
     for (i, tok_index) in tok_ns_to_s_map.items():
         tok_s_to_ns_map[tok_index] = i
