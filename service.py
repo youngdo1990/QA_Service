@@ -7,7 +7,7 @@ from bert import QA
 import urllib.parse
 import time
 
-HOST = "112.160.206.172"
+HOST = "127.0.0.1" // HOST IP 주소로 바꾸면 됩니다.
 
 app = Flask(__name__)
 
